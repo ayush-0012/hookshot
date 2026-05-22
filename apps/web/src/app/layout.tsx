@@ -1,11 +1,9 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 
-import "../index.css";
 import { Geist, Geist_Mono } from "next/font/google";
-
-import Header from "@/components/header";
-import Providers from "@/components/providers";
+import ClerkSync from "@/components/ClerkSync";
+import "../index.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,15 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <ClerkProvider>
-          <Providers>
-            <div className="grid grid-rows-[auto_1fr] h-svh">
-              <Header />
-              {children}
-            </div>
-          </Providers>
+          <ClerkSync />
+          {children}
         </ClerkProvider>
       </body>
     </html>
