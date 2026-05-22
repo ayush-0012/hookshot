@@ -19,7 +19,7 @@ export const endpointEventType = pgEnum("endpoint_event_type", [
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
-  clerkId: text("clerk_id"),
+  clerkId: text("clerk_id").notNull(),
   userName: text("user_name").notNull(),
   email: varchar("email", { length: 255 }).notNull(),
   status: text("status").notNull(),
