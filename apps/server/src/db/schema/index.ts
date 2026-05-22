@@ -4,22 +4,25 @@ import {
   pgEnum,
   pgTable,
   text,
-  uuid,
   timestamp,
+  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 
 // enums
 export const userStatus = pgEnum("user_status", ["active", "inactive"]);
 export const payloadEventType = pgEnum("payload_event_type", ["web", "api"]);
-export const endpointEventType = pgEnum("endpoint_event_type", ["webhook", "callback"]);
+export const endpointEventType = pgEnum("endpoint_event_type", [
+  "webhook",
+  "callback",
+]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   clerkId: text("clerk_id").notNull(),
-  userName: text("user_name"),
-  email: varchar("email", { length: 255 }),
-  status: text("status"),
+  userName: text("user_name").notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  status: text("status").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
@@ -57,8 +60,12 @@ export const endpoint = pgTable("endpoint", {
 
 export const logs = pgTable("logs", {
   id: uuid("id").primaryKey().defaultRandom(),
-  endpointId: uuid("endpoint_id").references(() => endpoint.id, { onDelete: "cascade" }),
-  payloadId: uuid("payload_id").references(() => payload.id, { onDelete: "cascade" }),
+  endpointId: uuid("endpoint_id").references(() => endpoint.id, {
+    onDelete: "cascade",
+  }),
+  payloadId: uuid("payload_id").references(() => payload.id, {
+    onDelete: "cascade",
+  }),
   statusCode: integer("status_code"),
   attemptNumber: integer("attempt_number"),
   endpointResponse: text("endpoint_response"),
