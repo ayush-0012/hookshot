@@ -1,15 +1,25 @@
 "use client";
 
-import { env } from "@/env";
-import { useUser } from "@clerk/nextjs";
+import { api } from "@/utils/api";
+import { setClerkAuthTokenGetter } from "@/utils/clerk-auth";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 export default function ClerkSync() {
   const { isLoaded, isSignedIn, user } = useUser();
+  const { getToken } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const syncedUserId = useRef<string | null>(null);
+
+  useEffect(() => {
+    setClerkAuthTokenGetter(getToken);
+
+    return () => {
+      setClerkAuthTokenGetter(null);
+    };
+  }, [getToken]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -30,11 +40,7 @@ export default function ClerkSync() {
 
     async function syncUser() {
       try {
-        await fetch(`${env.NEXT_PUBLIC_SERVER_URL}/auth`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        await api.post("/api/user/insert", payload);
         syncedUserId.current = userId;
       } catch (err) {
         console.error("Error sending auth sync:", err);

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 import { Geist, Geist_Mono } from "next/font/google";
 import ClerkSync from "@/components/ClerkSync";
+import Providers from "@/components/providers";
 import "../index.css";
 
 const geistSans = Geist({
@@ -32,7 +33,7 @@ export default function RootLayout({
       >
         <ClerkProvider>
           <ClerkSync />
-          {children}
+          <Providers>{children}</Providers>
         </ClerkProvider>
       </body>
     </html>
