@@ -1,5 +1,5 @@
-import "dotenv/config";
 import { createEnv } from "@t3-oss/env-core";
+import "dotenv/config";
 import { z } from "zod";
 
 export const env = createEnv({
@@ -8,7 +8,10 @@ export const env = createEnv({
     CLERK_SECRET_KEY: z.string().min(1),
     CLERK_PUBLISHABLE_KEY: z.string().min(1),
     CORS_ORIGIN: z.url(),
-    NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    NODE_ENV: z
+      .enum(["development", "production", "test"])
+      .default("development"),
+    ENCRYPTION_KEY: z.string().min(32),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

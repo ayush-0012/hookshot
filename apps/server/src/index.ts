@@ -1,8 +1,9 @@
 import { clerkMiddleware } from "@clerk/express";
 import cors from "cors";
 import express from "express";
-import { insertUser } from "./controllers/auth.controller";
 import { env } from "./env";
+import { apiKeyRoutes } from "./routes/apiKey.routes";
+import { userRoutes } from "./routes/user.routes";
 
 const app = express();
 
@@ -11,6 +12,7 @@ app.use(
     origin: env.CORS_ORIGIN,
     methods: ["GET", "POST", "OPTIONS", "DELETE", "PUT", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   }),
 );
 
@@ -26,7 +28,8 @@ app.get("/", (_req, res) => {
   res.status(200).send("OK");
 });
 
-app.post("/auth", insertUser);
+app.use("/api/user", userRoutes);
+app.use("/api/key", apiKeyRoutes);
 
 app.listen(3000, () => {
   console.log("Server is running on http://localhost:3000");
