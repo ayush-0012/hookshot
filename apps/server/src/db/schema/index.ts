@@ -11,8 +11,8 @@ import {
 
 // enums
 export const userStatus = pgEnum("user_status", ["active", "inactive"]);
-export const payloadEventType = pgEnum("payload_event_type", ["web", "api"]);
-export const endpointEventType = pgEnum("endpoint_event_type", [
+export const payloadEventTypes = pgEnum("payload_event_type", ["web", "api"]);
+export const endpointEventTypes = pgEnum("endpoint_event_type", [
   "webhook",
   "callback",
 ]);
@@ -29,9 +29,9 @@ export const users = pgTable("users", {
 
 export const apiKeys = pgTable("api_keys", {
   id: uuid("id").primaryKey().defaultRandom(),
-  hashedApiKey: text("hashed_api_key"),
+  encryptedApiKey: text("encrypted_api_key"),
   keyName: text("key_name"),
-  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }).defaultNow(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
@@ -51,9 +51,9 @@ export const payload = pgTable("payload", {
 export const endpoint = pgTable("endpoint", {
   id: uuid("id").primaryKey().defaultRandom(),
   url: text("url"),
-  eventType: text("event_type").array(),
+  eventTypes: text("event_types").array(),
   endpointStatus: text("endpoint_status"),
-  signingKey: text("signing_key"),
+  encryptedSigningKey: text("encrypted_signing_key"),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
