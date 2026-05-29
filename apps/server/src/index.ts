@@ -3,6 +3,8 @@ import cors from "cors";
 import express from "express";
 import { env } from "./env";
 import { apiKeyRoutes } from "./routes/apiKey.routes";
+import { endpointRoutes } from "./routes/endpoint.routes";
+import { queueRoutes } from "./routes/queue.routes";
 import { userRoutes } from "./routes/user.routes";
 
 const app = express();
@@ -30,6 +32,8 @@ app.get("/", (_req, res) => {
 
 app.use("/api/user", userRoutes);
 app.use("/api/key", apiKeyRoutes);
+app.use("/api/endpoint", endpointRoutes);
+app.use("/api/queue", queueRoutes);
 
 app.listen(3000, () => {
   console.log("Server is running on http://localhost:3000");

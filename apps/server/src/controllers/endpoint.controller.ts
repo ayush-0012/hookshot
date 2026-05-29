@@ -1,7 +1,6 @@
 import { db } from "@/db";
 import { endpoint } from "@/db/schema";
 import { encryptData, generateSigningKey } from "@/utils/crypto";
-import { getUserId } from "@/utils/general/getUser";
 import { tryCatch } from "@/utils/handlers/tryCatch";
 import type { Request, Response } from "express";
 
@@ -15,7 +14,7 @@ export async function createUserEndpoint(req: Request, res: Response) {
       .json({ message: "Saying EventTypes is not an array" });
   }
 
-  const userId = await getUserId(req);
+  // const userId = await getUserId(req);
   const signingKey = generateSigningKey();
   const encryptedSigningKey = encryptData(signingKey);
 
@@ -26,17 +25,14 @@ export async function createUserEndpoint(req: Request, res: Response) {
         url: endpointUrl,
         eventTypes,
         encryptedSigningKey,
-        userId,
+        userId: "a9d27f18-5ad8-4192-af13-ebb6c8e48c95",
       })
       .returning(),
   );
 
-  const endpointId = endpointRes[0].id;
-
   if (endpointRes) {
     return res.status(201).json({
       message: "Endpoint created successfully",
-      endpointId,
       signingKey,
     });
   }
