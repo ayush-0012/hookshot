@@ -6,6 +6,8 @@ import { apiKeyRoutes } from "./routes/apiKey.routes";
 import { endpointRoutes } from "./routes/endpoint.routes";
 import { queueRoutes } from "./routes/queue.routes";
 import { userRoutes } from "./routes/user.routes";
+import { rateLimiterMiddleware } from "./services/rateLimiter";
+import { initWorker } from "./services/worker.service";
 
 const app = express();
 
@@ -30,10 +32,12 @@ app.get("/", (_req, res) => {
   res.status(200).send("OK");
 });
 
+initWorker();
+
 app.use("/api/user", userRoutes);
 app.use("/api/key", apiKeyRoutes);
 app.use("/api/endpoint", endpointRoutes);
-app.use("/api/queue", queueRoutes);
+app.use("/api/queue", rateLimiterMiddleware, queueRoutes);
 
 app.listen(3000, () => {
   console.log("Server is running on http://localhost:3000");

@@ -33,7 +33,7 @@ export async function createUserEndpoint(req: Request, res: Response) {
   if (endpointRes) {
     return res.status(201).json({
       message: "Endpoint created successfully",
-      signingKey,
+      id: endpointRes[0].id,
     });
   }
 
