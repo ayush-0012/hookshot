@@ -54,3 +54,12 @@ export function decryptData(encryptedData: string): string {
 
   return decrypted;
 }
+
+export function createHmacSignature(
+  payload: string | Record<string, unknown> | unknown[],
+  signingKey: string,
+  algorithm = "sha256",
+) {
+  const data = typeof payload === "string" ? payload : JSON.stringify(payload);
+  return crypto.createHmac(algorithm, signingKey).update(data).digest("hex");
+}
