@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { endpoint, logs } from "@/db/schema";
 import { createHmacSignature, decryptData } from "@/utils/crypto";
-import { retriesTracker } from "@/utils/handlers/retryHandler";
+import { requestTracker } from "@/utils/handlers/retryHandler";
 import { tryCatch } from "@/utils/handlers/tryCatch";
 import { redisClient } from "@/utils/redis";
 import axios from "axios";
@@ -109,7 +109,7 @@ export async function initWorker() {
         if (job.attemptsMade > 0 && job.attemptsMade < maxAttempts) {
           console.log("inside the if block for retrying");
           console.log("count of attemptsMade by worker", job.attemptsMade);
-          const result = await retriesTracker(
+          const result = await requestTracker(
             job.attemptsMade,
             data.endpointId,
             data.payloadId,
@@ -125,7 +125,7 @@ export async function initWorker() {
         if (axios.isAxiosError(error) && error.response) {
           const maxAttempts = job.opts.attempts ?? 3;
           if (job.attemptsMade > 0 && job.attemptsMade < maxAttempts) {
-            const result = await retriesTracker(
+            const result = await requestTracker(
               job.attemptsMade,
               data.endpointId,
               data.payloadId,

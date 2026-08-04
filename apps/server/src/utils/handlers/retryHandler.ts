@@ -3,7 +3,7 @@ import { logs } from "@/db/schema";
 import { tryCatch } from "./tryCatch";
 
 // it will track the jobs status and store the data for that in the db
-export async function retriesTracker(
+export async function requestTracker(
   attemptsMade: number,
   endpointId: string,
   payloadId: string,
