@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { endpoint, logs } from "@/db/schema";
-import { createHmacSignature, decryptData } from "@/utils/crypto";
-import { requestTracker } from "@/utils/handlers/retryHandler";
+import { queue } from "@/utils/constants";
+import { createHmacSignature, decryptData } from "@/utils/general/crypto";
+import { requestTracker } from "@/utils/handlers/requestTracker";
 import { tryCatch } from "@/utils/handlers/tryCatch";
 import { redisClient } from "@/utils/redis";
 import axios from "axios";
@@ -12,7 +13,7 @@ import { rateLimiter } from "./rateLimiter";
 export async function initWorker() {
   console.log("worker initialized");
   const worker = new Worker(
-    "payload-queue",
+    queue,
     async (job: Job) => {
       const jobFromRedis = job;
 
