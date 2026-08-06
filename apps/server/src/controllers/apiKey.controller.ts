@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { apiKeys } from "@/db/schema";
-import { encryptData, generateApiKey } from "@/utils/crypto";
+import { encryptData, generateApiKey } from "@/utils/general/crypto";
 import { getUserId } from "@/utils/general/getUser";
 import { desc, eq } from "drizzle-orm";
 import type { Request, Response } from "express";

@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { endpoint } from "@/db/schema";
-import { encryptData, generateSigningKey } from "@/utils/crypto";
+import { encryptData, generateSigningKey } from "@/utils/general/crypto";
 import { tryCatch } from "@/utils/handlers/tryCatch";
 import type { Request, Response } from "express";
 
