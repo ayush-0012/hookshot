@@ -63,3 +63,7 @@ export function createHmacSignature(
   const data = typeof payload === "string" ? payload : JSON.stringify(payload);
   return crypto.createHmac(algorithm, signingKey).update(data).digest("hex");
 }
+
+export function generateHash(value: string, algorithm = "sha256") {
+  return crypto.createHash(algorithm).update(value).digest("hex");
+}

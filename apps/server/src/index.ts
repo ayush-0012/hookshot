@@ -2,6 +2,7 @@ import { clerkMiddleware } from "@clerk/express";
 import cors from "cors";
 import express from "express";
 import { env } from "./env";
+import { validateApiKey } from "./middlewares/auth.middleware";
 import { apiKeyRoutes } from "./routes/apiKey.routes";
 import { endpointRoutes } from "./routes/endpoint.routes";
 import { queueRoutes } from "./routes/queue.routes";
@@ -37,7 +38,7 @@ initWorker();
 app.use("/api/user", userRoutes);
 app.use("/api/key", apiKeyRoutes);
 app.use("/api/endpoint", endpointRoutes);
-app.use("/api/queue", rateLimiterMiddleware, queueRoutes);
+app.use("/api/queue", rateLimiterMiddleware, validateApiKey, queueRoutes);
 
 app.listen(3000, () => {
   console.log("Server is running on http://localhost:3000");

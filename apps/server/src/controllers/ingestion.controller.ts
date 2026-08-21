@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { endpoint, payload } from "@/db/schema";
-import { queue } from "@/utils/constants";
+import { queue, retryQueue } from "@/utils/constants";
 import { tryCatch } from "@/utils/handlers/tryCatch";
 import { redisClient } from "@/utils/redis";
 import { Queue } from "bullmq";
@@ -127,7 +127,7 @@ export async function retryJob(req: Request, res: Response) {
 
   // After getting data, add the job into queue with the data
   const job = await payloadQueue.add(
-    "retryJob-payload",
+    retryQueue,
     {
       body: payloadBody,
       payloadId,
@@ -137,7 +137,7 @@ export async function retryJob(req: Request, res: Response) {
     },
     {
       jobId: uuid(),
-      attempts: 3,
+      attempts: 1,
       backoff: { type: "exponential", delay: 10000 },
     },
   );

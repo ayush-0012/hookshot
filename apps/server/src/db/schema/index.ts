@@ -29,7 +29,7 @@ export const users = pgTable("users", {
 
 export const apiKeys = pgTable("api_keys", {
   id: uuid("id").primaryKey().defaultRandom(),
-  encryptedApiKey: text("encrypted_api_key"),
+  hashedApiKey: text("hashed_api_key"),
   keyName: text("key_name"),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }).defaultNow(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
