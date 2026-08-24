@@ -14,17 +14,22 @@ const payloadQueue = new Queue(queue, {
 
 export async function ingestion(req: Request, res: Response) {
   const { payloadBody, eventType, endpointId } = req.body;
+  const errors: string[] = [];
 
   if (!endpointId) {
-    return res.status(401).json({ message: "EndpointId is missing" });
+    errors.push("EndpointId is missing");
   }
 
   if (!eventType) {
-    return res.status(401).json({ message: "Event type is missing" });
+    errors.push("Event type is missing");
   }
 
   if (!payloadBody) {
-    return res.status(401).json({ message: "Payload data is missing" });
+    errors.push("Payload data is missing");
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ errors });
   }
 
   console.log("validating json ");
@@ -35,17 +40,30 @@ export async function ingestion(req: Request, res: Response) {
 
   if (!validateJson) return "Invalid Json";
 
-  // we have to get the userId through the apiKey (since this req is coming from user backend to our service)
-  const userId = "a9d27f18-5ad8-4192-af13-ebb6c8e48c95"; // hardcoded for testing for now
+  // db call to get the userId through endpointId, and pass it in the job and then we can pass the userId in the logs db calls
+  const { data: endpointRes, error: fetchErr } = await tryCatch(
+    db
+      .select({ userId: endpoint.userId })
+      .from(endpoint)
+      .where(eq(endpoint.id, endpointId)),
+  );
 
-  // insert the payload in the db first
+  console.log("endpointres", endpointRes);
+  const userId = endpointRes[0].userId;
+  console.log("userid from endpoint res", userId);
+
+  if (fetchErr && !userId) {
+    return res.status(500).json({ message: "Failed to fetch the userId" });
+  }
+
+  // insert the payload in the db
   const { data: payloadRes } = await tryCatch(
     db
       .insert(payload)
       .values({
         payloadBody,
         eventType,
-        payloadStatus: null, // it'll be updated later, after the service has returned a res
+        payloadStatus: null, // it'll be updated later, after the service has returned a response
         userId,
       })
       .returning(),
@@ -57,7 +75,14 @@ export async function ingestion(req: Request, res: Response) {
   if (payloadRes !== null) {
     const job = await payloadQueue.add(
       "payload",
-      { body: payloadBody, payloadId, eventType, endpointId, ip: req.ip },
+      {
+        body: payloadBody,
+        userId,
+        payloadId,
+        eventType,
+        endpointId,
+        ip: req.ip,
+      },
       {
         jobId: uuid(),
         attempts: 3,

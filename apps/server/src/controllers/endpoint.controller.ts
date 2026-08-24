@@ -44,3 +44,6 @@ export async function createUserEndpoint(req: Request, res: Response) {
     });
   }
 }
+
+// to fetch all the webhooks of the user along with their status
+export async function fetchUserWebhooks(req: Request, res: Response) {}
