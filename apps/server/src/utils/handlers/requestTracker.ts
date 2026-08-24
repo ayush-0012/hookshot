@@ -12,6 +12,7 @@ export async function requestTracker(
   endpointRes: unknown,
   failureCategory?: string,
   failureReason?: string,
+  finishedAt?: string,
 ) {
   console.log("db call to save in logs");
   const endpointResponse =
@@ -33,6 +34,7 @@ export async function requestTracker(
         failureCategory,
         failureReason,
         startedAt,
+        finishedAt,
       })
       .returning(),
   );
