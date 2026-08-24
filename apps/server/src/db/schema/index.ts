@@ -23,18 +23,33 @@ export const users = pgTable("users", {
   userName: text("user_name").notNull(),
   email: varchar("email", { length: 255 }).notNull(),
   status: text("status").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", {
+    withTimezone: true,
+    mode: "string",
+  }).defaultNow(),
+  updatedAt: timestamp("updated_at", {
+    withTimezone: true,
+    mode: "string",
+  }).defaultNow(),
 });
 
 export const apiKeys = pgTable("api_keys", {
   id: uuid("id").primaryKey().defaultRandom(),
   hashedApiKey: text("hashed_api_key"),
   keyName: text("key_name"),
-  lastUsedAt: timestamp("last_used_at", { withTimezone: true }).defaultNow(),
+  lastUsedAt: timestamp("last_used_at", {
+    withTimezone: true,
+    mode: "string",
+  }).defaultNow(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", {
+    withTimezone: true,
+    mode: "string",
+  }).defaultNow(),
+  expiresAt: timestamp("expires_at", {
+    withTimezone: true,
+    mode: "string",
+  }),
 });
 
 export const payload = pgTable("payload", {
@@ -45,7 +60,10 @@ export const payload = pgTable("payload", {
   userId: uuid("user_id")
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", {
+    withTimezone: true,
+    mode: "string",
+  }).defaultNow(),
 });
 
 export const endpoint = pgTable("endpoint", {
@@ -55,11 +73,15 @@ export const endpoint = pgTable("endpoint", {
   endpointStatus: text("endpoint_status"),
   encryptedSigningKey: text("encrypted_signing_key"),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", {
+    withTimezone: true,
+    mode: "string",
+  }).defaultNow(),
 });
 
 export const logs = pgTable("logs", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   endpointId: uuid("endpoint_id").references(() => endpoint.id, {
     onDelete: "cascade",
   }),
@@ -69,6 +91,14 @@ export const logs = pgTable("logs", {
   statusCode: integer("status_code"),
   attemptNumber: integer("attempt_number"),
   endpointResponse: text("endpoint_response"),
-  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow(),
-  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  failureCategory: varchar("failure_category", { length: 50 }),
+  failureReason: text("failure_reason"),
+  startedAt: timestamp("started_at", {
+    withTimezone: true,
+    mode: "string",
+  }).defaultNow(),
+  finishedAt: timestamp("finished_at", {
+    withTimezone: true,
+    mode: "string",
+  }),
 });
