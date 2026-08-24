@@ -19,7 +19,7 @@ export async function requestTracker(
     typeof endpointRes === "string"
       ? endpointRes
       : JSON.stringify(endpointRes ?? {});
-  const startedAt = new Date().toISOString();
+  const startedAt = new Date().toLocaleString("sv-SE");
 
   const { data: logsInsert, error: insertErr } = await tryCatch(
     db

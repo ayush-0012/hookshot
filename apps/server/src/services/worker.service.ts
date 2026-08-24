@@ -95,7 +95,7 @@ export async function initWorker() {
         // runs if api returned success
         if (responseStatus === 200) {
           // tracking 200 as well using the helper function
-          const finishedAt = new Date().toISOString();
+          const finishedAt = new Date().toLocaleString("sv-SE");
           const logInsert = await requestTracker(
             job.attemptsMade,
             data.userId,
@@ -120,7 +120,7 @@ export async function initWorker() {
         if (job.attemptsMade > 0 && job.attemptsMade < maxAttempts) {
           console.log("inside the if block for retrying");
           console.log("count of attemptsMade by worker", job.attemptsMade);
-          const finishedAt = new Date().toISOString();
+          const finishedAt = new Date().toLocaleString("sv-SE");
           const result = await requestTracker(
             job.attemptsMade,
             data.userId,
@@ -187,7 +187,7 @@ export async function initWorker() {
         if (axios.isAxiosError(error) && error.response) {
           const maxAttempts = job.opts.attempts ?? 3;
           if (job.attemptsMade > 0 && job.attemptsMade < maxAttempts) {
-            const finishedAt = new Date().toISOString();
+            const finishedAt = new Date().toLocaleString("sv-SE");
             const result = await requestTracker(
               job.attemptsMade,
               data.userId,
@@ -210,7 +210,7 @@ export async function initWorker() {
             error.message.startsWith("Webhook returned status ")
           )
         ) {
-          const finishedAt = new Date().toISOString();
+          const finishedAt = new Date().toLocaleString("sv-SE");
           const result = await requestTracker(
             job.attemptsMade,
             data.userId,
@@ -314,7 +314,7 @@ export async function initWorker() {
         console.log("res data", responseData);
 
         if (responseStatus === 200) {
-          const finishedAt = new Date().toISOString();
+          const finishedAt = new Date().toLocaleString("sv-SE");
           const logInsert = await requestTracker(
             job.attemptsMade,
             data.userId,
@@ -335,7 +335,7 @@ export async function initWorker() {
         }
 
         // don't need to handle retry since user is already retrying this job from the dashboard
-        const finishedAt = new Date().toISOString();
+        const finishedAt = new Date().toLocaleString("sv-SE");
         const result = await requestTracker(
           job.attemptsMade,
           data.userId,
@@ -352,7 +352,7 @@ export async function initWorker() {
       } catch (error) {
         let failureCategory: string;
         let failureReason: string;
-        const finishedAt = new Date().toISOString();
+        const finishedAt = new Date().toLocaleString("sv-SE");
 
         if (axios.isAxiosError(error) && error.response) {
           failureCategory = "HTTP Error";
