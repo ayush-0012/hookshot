@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { endpoint, logs } from "@/db/schema";
+import { endpoint } from "@/db/schema";
 import { queue } from "@/utils/constants";
 import { createHmacSignature, decryptData } from "@/utils/general/crypto";
 import { requestTracker } from "@/utils/handlers/requestTracker";
@@ -48,10 +48,13 @@ export async function initWorker() {
         endpointUrl: endpointRes[0].url,
         eventType: jobFromRedis.data.eventType,
         payloadBody: jobFromRedis.data.body,
+        userId: jobFromRedis.data.userId,
         endpointId: endpointRes[0].id,
         payloadId: jobFromRedis.data.payloadId,
         ip: jobFromRedis.data.ip,
       };
+
+      console.log("inside the worker loggin userid", data.userId);
 
       console.log("making api call");
       let res: any;
@@ -89,33 +92,39 @@ export async function initWorker() {
 
         console.log("res data", responseData);
 
+        // runs if api returned success
         if (responseStatus === 200) {
-          const { data: logRes, error: insertErr } = await tryCatch(
-            db.insert(logs).values({
-              endpointId: endpointRes[0].id,
-              payloadId: jobFromRedis.data.payloadId,
-              statusCode: responseStatus,
-              attemptNumber: job.attemptsMade + 1,
-            }),
+          // tracking 200 as well using the helper function
+          const logInsert = await requestTracker(
+            job.attemptsMade,
+            data.userId,
+            data.endpointId,
+            data.payloadId,
+            responseStatus,
+            responseData,
           );
 
-          if (insertErr) {
+          if (!logInsert) {
             throw new Error("log table insert err");
           }
 
           return;
         }
 
+        // runs on retry if the api calls has failed
         const maxAttempts = job.opts.attempts ?? 3;
         if (job.attemptsMade > 0 && job.attemptsMade < maxAttempts) {
           console.log("inside the if block for retrying");
           console.log("count of attemptsMade by worker", job.attemptsMade);
           const result = await requestTracker(
             job.attemptsMade,
+            data.userId,
             data.endpointId,
             data.payloadId,
             responseStatus,
             responseData,
+            "HTTP Error",
+            `HTTP ${responseStatus}`,
           );
 
           console.log("retry api made", result);
@@ -123,21 +132,88 @@ export async function initWorker() {
 
         throw new Error(`Webhook returned status ${responseStatus}`);
       } catch (error) {
+        let failureCategory: string;
+        let failureReason: string;
+
+        if (axios.isAxiosError(error) && error.response) {
+          failureCategory = "HTTP Error";
+          failureReason = `HTTP ${error.response.status}`;
+        } else if (
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          typeof error.code === "string"
+        ) {
+          // Handling unexpected error codes and reason for better logs
+          console.error("Webhook request error code:", error.code);
+          switch (error.code) {
+            case "ECONNREFUSED":
+              failureCategory = "Connection Refused";
+              failureReason =
+                "Connection refused - target server is not accepting connections";
+              break;
+            case "ENOTFOUND":
+              failureCategory = "DNS Error";
+              failureReason = "DNS resolution failed - hostname not found";
+              break;
+            case "ETIMEDOUT":
+              failureCategory = "Connection Timeout";
+              failureReason = "Connection timed out - no response from target";
+              break;
+            case "ECONNABORTED":
+              failureCategory = "Connection Timeout";
+              failureReason = "Connection timed out - no response from target";
+              break;
+            case "ECONNRESET":
+              failureCategory = "Connection Reset";
+              failureReason = "Connection reset by target server";
+              break;
+            default:
+              failureCategory = "Network Error";
+              failureReason = "Network error";
+          }
+        } else {
+          failureCategory = "Unknown Error";
+          failureReason =
+            error instanceof Error ? error.message : String(error);
+        }
+
         if (axios.isAxiosError(error) && error.response) {
           const maxAttempts = job.opts.attempts ?? 3;
           if (job.attemptsMade > 0 && job.attemptsMade < maxAttempts) {
             const result = await requestTracker(
               job.attemptsMade,
+              data.userId,
               data.endpointId,
               data.payloadId,
               Number(
                 error.response?.data?.status ?? error.response?.status ?? 500,
               ),
               error.response?.data ?? {},
+              failureCategory,
+              failureReason,
             );
 
             console.log("retry api made", result);
           }
+        } else if (
+          !(
+            error instanceof Error &&
+            error.message.startsWith("Webhook returned status ")
+          )
+        ) {
+          const result = await requestTracker(
+            job.attemptsMade,
+            data.userId,
+            data.endpointId,
+            data.payloadId,
+            responseStatus,
+            responseData,
+            failureCategory,
+            failureReason,
+          );
+
+          console.log("failure logged", result);
         }
 
         throw error;
@@ -177,17 +253,19 @@ export async function initWorker() {
       console.log("getting signing key");
       const signingKey = decryptData(endpointRes[0].encryptedSigningKey);
       const signature = createHmacSignature(jobFromRedis.data.body, signingKey);
-      const endpointUrl = endpointRes[0].url;
 
       const data = {
         signature: JSON.stringify(signature),
         endpointUrl: endpointRes[0].url,
         eventType: jobFromRedis.data.eventType,
         payloadBody: jobFromRedis.data.body,
+        userId: jobFromRedis.data.userId,
         endpointId: endpointRes[0].id,
         payloadId: jobFromRedis.data.payloadId,
         ip: jobFromRedis.data.ip,
       };
+
+      console.log("inside the retryworker loggin userid", data.userId);
 
       console.log("making api call");
       let res: any;
@@ -226,16 +304,16 @@ export async function initWorker() {
         console.log("res data", responseData);
 
         if (responseStatus === 200) {
-          const { data: logRes, error: insertErr } = await tryCatch(
-            db.insert(logs).values({
-              endpointId: endpointRes[0].id,
-              payloadId: jobFromRedis.data.payloadId,
-              statusCode: responseStatus,
-              attemptNumber: job.attemptsMade + 1,
-            }),
+          const logInsert = await requestTracker(
+            job.attemptsMade,
+            data.userId,
+            data.endpointId,
+            data.payloadId,
+            responseStatus,
+            responseData,
           );
 
-          if (insertErr) {
+          if (!logInsert) {
             throw new Error("log table insert err");
           }
 
@@ -245,37 +323,112 @@ export async function initWorker() {
         // don't need to handle retry since user is already retrying this job from the dashboard
         const result = await requestTracker(
           job.attemptsMade,
+          data.userId,
           data.endpointId,
           data.payloadId,
           responseStatus,
           responseData,
+          "HTTP Error",
+          `HTTP ${responseStatus}`,
         );
 
         throw new Error(`Webhook returned status ${responseStatus}`);
       } catch (error) {
-        // if (axios.isAxiosError(error) && error.response) {
-        //   const maxAttempts = job.opts.attempts ?? 3;
-        //   if (job.attemptsMade > 0 && job.attemptsMade < maxAttempts) {
-        //     const result = await requestTracker(
-        //       job.attemptsMade,
-        //       data.endpointId,
-        //       data.payloadId,
-        //       Number(
-        //         error.response?.data?.status ?? error.response?.status ?? 500,
-        //       ),
-        //       error.response?.data ?? {},
-        //     );
+        let failureCategory: string;
+        let failureReason: string;
 
-        //     console.log("retry api made", result);
-        //   }
-        // }
+        if (axios.isAxiosError(error) && error.response) {
+          failureCategory = "HTTP Error";
+          failureReason = `HTTP ${error.response.status}`;
+        } else if (
+          error instanceof Error &&
+          error.message.startsWith("Webhook returned status ")
+        ) {
+          failureCategory = "HTTP Error";
+          failureReason = error.message.replace(
+            "Webhook returned status ",
+            "HTTP ",
+          );
+        } else if (
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          typeof error.code === "string"
+        ) {
+          console.error("Webhook request error code:", error.code);
+          switch (error.code) {
+            case "ECONNREFUSED":
+              failureCategory = "Connection Refused";
+              failureReason =
+                "Connection refused - target server is not accepting connections";
+              break;
+            case "ENOTFOUND":
+              failureCategory = "DNS Error";
+              failureReason = "DNS resolution failed - hostname not found";
+              break;
+            case "ETIMEDOUT":
+              failureCategory = "Connection Timeout";
+              failureReason = "Connection timed out - no response from target";
+              break;
+            case "ECONNABORTED":
+              failureCategory = "Connection Timeout";
+              failureReason = "Connection timed out - no response from target";
+              break;
+            case "ECONNRESET":
+              failureCategory = "Connection Reset";
+              failureReason = "Connection reset by target server";
+              break;
+            default:
+              failureCategory = "Network Error";
+              failureReason = "Network error";
+          }
+        } else {
+          failureCategory = "Unknown Error";
+          failureReason =
+            error instanceof Error ? error.message : String(error);
+        }
+
+        if (axios.isAxiosError(error) && error.response) {
+          const result = await requestTracker(
+            job.attemptsMade,
+            data.userId,
+            data.endpointId,
+            data.payloadId,
+            Number(
+              error.response?.data?.status ?? error.response?.status ?? 500,
+            ),
+            error.response?.data ?? {},
+            failureCategory,
+            failureReason,
+          );
+
+          console.log("retry api made", result);
+        } else if (
+          !(
+            error instanceof Error &&
+            error.message.startsWith("Webhook returned status ")
+          )
+        ) {
+          const result = await requestTracker(
+            job.attemptsMade,
+            data.userId,
+            data.endpointId,
+            data.payloadId,
+            responseStatus,
+            responseData,
+            failureCategory,
+            failureReason,
+          );
+
+          console.log("failure logged", result);
+        }
 
         throw error;
       }
     },
     {
       connection: redisClient,
-      autorun: true,
+      autorun: false,
     },
   );
 
