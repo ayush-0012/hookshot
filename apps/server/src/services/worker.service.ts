@@ -95,6 +95,7 @@ export async function initWorker() {
         // runs if api returned success
         if (responseStatus === 200) {
           // tracking 200 as well using the helper function
+          const finishedAt = new Date().toISOString();
           const logInsert = await requestTracker(
             job.attemptsMade,
             data.userId,
@@ -102,6 +103,9 @@ export async function initWorker() {
             data.payloadId,
             responseStatus,
             responseData,
+            "",
+            "",
+            finishedAt,
           );
 
           if (!logInsert) {
@@ -116,6 +120,7 @@ export async function initWorker() {
         if (job.attemptsMade > 0 && job.attemptsMade < maxAttempts) {
           console.log("inside the if block for retrying");
           console.log("count of attemptsMade by worker", job.attemptsMade);
+          const finishedAt = new Date().toISOString();
           const result = await requestTracker(
             job.attemptsMade,
             data.userId,
@@ -125,6 +130,7 @@ export async function initWorker() {
             responseData,
             "HTTP Error",
             `HTTP ${responseStatus}`,
+            finishedAt,
           );
 
           console.log("retry api made", result);
@@ -181,6 +187,7 @@ export async function initWorker() {
         if (axios.isAxiosError(error) && error.response) {
           const maxAttempts = job.opts.attempts ?? 3;
           if (job.attemptsMade > 0 && job.attemptsMade < maxAttempts) {
+            const finishedAt = new Date().toISOString();
             const result = await requestTracker(
               job.attemptsMade,
               data.userId,
@@ -192,6 +199,7 @@ export async function initWorker() {
               error.response?.data ?? {},
               failureCategory,
               failureReason,
+              finishedAt,
             );
 
             console.log("retry api made", result);
@@ -202,6 +210,7 @@ export async function initWorker() {
             error.message.startsWith("Webhook returned status ")
           )
         ) {
+          const finishedAt = new Date().toISOString();
           const result = await requestTracker(
             job.attemptsMade,
             data.userId,
@@ -211,6 +220,7 @@ export async function initWorker() {
             responseData,
             failureCategory,
             failureReason,
+            finishedAt,
           );
 
           console.log("failure logged", result);
@@ -304,6 +314,7 @@ export async function initWorker() {
         console.log("res data", responseData);
 
         if (responseStatus === 200) {
+          const finishedAt = new Date().toISOString();
           const logInsert = await requestTracker(
             job.attemptsMade,
             data.userId,
@@ -311,6 +322,9 @@ export async function initWorker() {
             data.payloadId,
             responseStatus,
             responseData,
+            undefined,
+            undefined,
+            finishedAt,
           );
 
           if (!logInsert) {
@@ -321,6 +335,7 @@ export async function initWorker() {
         }
 
         // don't need to handle retry since user is already retrying this job from the dashboard
+        const finishedAt = new Date().toISOString();
         const result = await requestTracker(
           job.attemptsMade,
           data.userId,
@@ -330,12 +345,14 @@ export async function initWorker() {
           responseData,
           "HTTP Error",
           `HTTP ${responseStatus}`,
+          finishedAt,
         );
 
         throw new Error(`Webhook returned status ${responseStatus}`);
       } catch (error) {
         let failureCategory: string;
         let failureReason: string;
+        const finishedAt = new Date().toISOString();
 
         if (axios.isAxiosError(error) && error.response) {
           failureCategory = "HTTP Error";
@@ -400,6 +417,7 @@ export async function initWorker() {
             error.response?.data ?? {},
             failureCategory,
             failureReason,
+            finishedAt,
           );
 
           console.log("retry api made", result);
@@ -418,6 +436,7 @@ export async function initWorker() {
             responseData,
             failureCategory,
             failureReason,
+            finishedAt,
           );
 
           console.log("failure logged", result);
