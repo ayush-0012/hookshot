@@ -15,6 +15,13 @@
       "when": 1779906436450,
       "tag": "0001_watery_timeslip",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787598305024,
+      "tag": "0002_faithful_galactus",
+      "breakpoints": true
     }
   ]
 }

@@ -63,7 +63,7 @@ export async function ingestion(req: Request, res: Response) {
       .values({
         payloadBody,
         eventType,
-        payloadStatus: null, // it'll be updated later, after the service has returned a response
+        payloadStatus: null, // it'll be updated later, after the endpoint has returned a response
         userId,
       })
       .returning(),
@@ -92,7 +92,9 @@ export async function ingestion(req: Request, res: Response) {
 
     console.log("job id added to the queue", job?.id);
 
-    return res.status(200).json({ message: "added in queue" });
+    return res
+      .status(200)
+      .json({ jobId: job.id, message: "Job added in queue successfully" });
   } else {
     return res.status(500).json({ message: "error occured while queuing" });
   }

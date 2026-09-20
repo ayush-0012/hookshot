@@ -18,7 +18,7 @@ export async function insertUser(req: Request, res: Response) {
   console.log("existing user", existingUser);
 
   if (Array.isArray(existingUser) && existingUser.length == 0) {
-    const res = await tryCatch(
+    const insertResult = await tryCatch(
       db.insert(users).values({
         clerkId,
         userName,
@@ -26,6 +26,7 @@ export async function insertUser(req: Request, res: Response) {
         email,
       }),
     );
+    void insertResult;
   } else {
     return res.status(200).json({
       success: true,

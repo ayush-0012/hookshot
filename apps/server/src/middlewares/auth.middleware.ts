@@ -17,11 +17,20 @@ export async function validateApiKey(
   next: NextFunction,
 ) {
   const { apiKey, endpointId } = req.body;
+  const errors: string[] = [];
 
-  if (!apiKey || !endpointId) {
-    return res
-      .status(400)
-      .json({ message: "apiKey and endpointId are required" });
+  console.log("apikey and endpointid", { apiKey, endpointId });
+
+  if (!apiKey) {
+    errors.push("API key is missing");
+  }
+
+  if (!endpointId) {
+    errors.push("Endpoint ID is missing");
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ errors });
   }
 
   const { data: connectedUser, error: fetchErr } = await tryCatch(

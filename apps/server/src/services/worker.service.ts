@@ -41,7 +41,6 @@ export async function initWorker() {
       console.log("getting signing key");
       const signingKey = decryptData(endpointRes[0].encryptedSigningKey);
       const signature = createHmacSignature(jobFromRedis.data.body, signingKey);
-      const endpointUrl = endpointRes[0].url;
 
       const data = {
         signature: JSON.stringify(signature),
@@ -53,6 +52,8 @@ export async function initWorker() {
         payloadId: jobFromRedis.data.payloadId,
         ip: jobFromRedis.data.ip,
       };
+
+      console.log("logging data object", data);
 
       console.log("inside the worker loggin userid", data.userId);
 
@@ -234,7 +235,7 @@ export async function initWorker() {
 
   console.log("retryWorker init");
   // worker to process jobs, users trying to retry from dashboard
-  const retryWorker = new Worker(
+  void new Worker(
     queue,
     async (job: Job) => {
       const jobFromRedis = job;
@@ -336,7 +337,7 @@ export async function initWorker() {
 
         // don't need to handle retry since user is already retrying this job from the dashboard
         const finishedAt = new Date().toLocaleString("sv-SE");
-        const result = await requestTracker(
+        await requestTracker(
           job.attemptsMade,
           data.userId,
           data.endpointId,
