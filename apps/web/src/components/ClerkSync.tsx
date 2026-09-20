@@ -45,7 +45,7 @@ export default function ClerkSync() {
       } catch (err) {
         console.error("Error sending auth sync:", err);
       } finally {
-        if (!isCancelled && pathname !== "/dashboard") {
+        if (!isCancelled && pathname === "/auth") {
           router.push("/dashboard");
         }
       }

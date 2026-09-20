@@ -49,9 +49,8 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
-  const [createdApiKey, setCreatedApiKey] = useState<CreateApiKeyResponse | null>(
-    null,
-  );
+  const [createdApiKey, setCreatedApiKey] =
+    useState<CreateApiKeyResponse | null>(null);
   const [hasCopiedApiKey, setHasCopiedApiKey] = useState(false);
 
   const {
@@ -136,9 +135,11 @@ export default function Dashboard() {
             Active Keys
           </div>
           <div className="text-3xl font-bold text-[#fde047]">
-            {!isLoaded || isLoading
-              ? "--"
-              : apiKeys.length.toString().padStart(2, "0")}
+            {!isLoaded || isLoading || isFetching ? (
+              <Loader2 className="h-7 w-7 animate-spin text-[#fde047]" />
+            ) : (
+              apiKeys.length.toString().padStart(2, "0")
+            )}
           </div>
         </div>
         <div className="border border-neutral-800 bg-[#161616] p-6 rounded-md">
@@ -233,8 +234,8 @@ export default function Dashboard() {
         )}
 
         {isFetching && !isLoading && (
-          <div className="border-t border-neutral-800 px-6 py-2 text-[11px] font-mono uppercase tracking-widest text-neutral-500">
-            Refreshing keys...
+          <div className="flex items-center gap-2 border-t border-neutral-800 px-6 py-2 text-[11px] font-mono uppercase tracking-widest text-neutral-500">
+            <Loader2 className="h-3 w-3 animate-spin" /> Refreshing keys...
           </div>
         )}
       </div>
