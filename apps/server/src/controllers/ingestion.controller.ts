@@ -12,6 +12,10 @@ const payloadQueue = new Queue(queue, {
   connection: redisClient,
 });
 
+const retryPayloadQueue = new Queue(retryQueue, {
+  connection: redisClient,
+});
+
 export async function ingestion(req: Request, res: Response) {
   const { payloadBody, eventType, endpointId } = req.body;
   const errors: string[] = [];
@@ -126,7 +130,11 @@ export async function retryJob(req: Request, res: Response) {
   ] = await Promise.all([
     tryCatch(
       db
-        .select({ url: endpoint.url, eventTypes: endpoint.eventTypes })
+        .select({
+          url: endpoint.url,
+          eventTypes: endpoint.eventTypes,
+          userId: endpoint.userId,
+        })
         .from(endpoint)
         .where(eq(endpoint.id, endpointId)),
     ),
@@ -149,16 +157,22 @@ export async function retryJob(req: Request, res: Response) {
   const endpointUrl = endpointRes[0]?.url;
   const eventTypes = endpointRes[0]?.eventTypes;
   const payloadBody = payloadRes[0]?.payloadBody;
+  const userId = endpointRes[0]?.userId;
+
+  if (!userId) {
+    return res.status(404).json({ message: "User not found for endpoint" });
+  }
 
   console.log("url and payload", endpointUrl, eventTypes, payloadBody);
 
-  // After getting data, add the job into queue with the data
-  const job = await payloadQueue.add(
-    retryQueue,
+  // After getting data, add the job into the retry queue with the data
+  const job = await retryPayloadQueue.add(
+    "retry",
     {
       body: payloadBody,
+      userId,
       payloadId,
-      eventTypes,
+      eventType: eventTypes,
       endpointId,
       ip: req.ip,
     },

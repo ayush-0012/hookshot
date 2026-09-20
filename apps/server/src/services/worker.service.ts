@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { endpoint } from "@/db/schema";
-import { queue } from "@/utils/constants";
+import { queue, retryQueue } from "@/utils/constants";
 import { createHmacSignature, decryptData } from "@/utils/general/crypto";
 import { requestTracker } from "@/utils/handlers/requestTracker";
 import { tryCatch } from "@/utils/handlers/tryCatch";
@@ -43,7 +43,7 @@ export async function initWorker() {
       const signature = createHmacSignature(jobFromRedis.data.body, signingKey);
 
       const data = {
-        signature: JSON.stringify(signature),
+        signature,
         endpointUrl: endpointRes[0].url,
         eventType: jobFromRedis.data.eventType,
         payloadBody: jobFromRedis.data.body,
@@ -76,8 +76,12 @@ export async function initWorker() {
           throw new Error("Rate limited");
         }
 
+        if (!data.endpointUrl) {
+          throw new Error("Endpoint URL missing for endpoint " + data.endpointId);
+        }
+
         res = await axios.post(
-          `http://localhost:4000/webhook`, // hardcoded for now
+          data.endpointUrl,
           data.payloadBody,
           {
             headers: {
@@ -235,8 +239,8 @@ export async function initWorker() {
 
   console.log("retryWorker init");
   // worker to process jobs, users trying to retry from dashboard
-  void new Worker(
-    queue,
+  const retryWorker = new Worker(
+    retryQueue,
     async (job: Job) => {
       const jobFromRedis = job;
 
@@ -266,7 +270,7 @@ export async function initWorker() {
       const signature = createHmacSignature(jobFromRedis.data.body, signingKey);
 
       const data = {
-        signature: JSON.stringify(signature),
+        signature,
         endpointUrl: endpointRes[0].url,
         eventType: jobFromRedis.data.eventType,
         payloadBody: jobFromRedis.data.body,
@@ -297,8 +301,12 @@ export async function initWorker() {
           throw new Error("Rate limited");
         }
 
+        if (!data.endpointUrl) {
+          throw new Error("Endpoint URL missing for endpoint " + data.endpointId);
+        }
+
         res = await axios.post(
-          `http://localhost:4000/webhook`, // hardcoded for now
+          data.endpointUrl,
           data.payloadBody,
           {
             headers: {
@@ -448,9 +456,20 @@ export async function initWorker() {
     },
     {
       connection: redisClient,
-      autorun: false,
+      autorun: true,
     },
   );
+
+  retryWorker.on("active", (job) =>
+    console.log(`Retry job ${job.id} is now active.`),
+  );
+  retryWorker.on("completed", (job) =>
+    console.log(`Retry job ${job.id} completed.`),
+  );
+  retryWorker.on("failed", (job, err) =>
+    console.error(`Retry job ${job?.id} failed:`, err.message),
+  );
+  retryWorker.on("error", (err) => console.error("Retry worker error:", err));
 
   worker.on("active", (job) => console.log(`Job ${job.id} is now active.`));
   worker.on("progress", (job, progress) =>
