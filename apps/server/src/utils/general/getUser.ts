@@ -3,15 +3,15 @@ import { users } from "@/db/schema";
 import { getAuth } from "@clerk/express";
 import { eq } from "drizzle-orm";
 import type { Request } from "express";
+import { AppError } from "../handlers/responseHandler";
 import { tryCatch } from "../handlers/tryCatch";
 
 // getting the userId using the clerkId
 export async function getUserId(req: Request) {
   const auth = getAuth(req);
-  console.log("in the get userid helper", auth.userId); //clerkId
 
   if (!auth.userId) {
-    throw new Error("User not authenticated");
+    throw new AppError(401, "User not authenticated");
   }
 
   // db call to get the userId from this clerkId
@@ -24,6 +24,14 @@ export async function getUserId(req: Request) {
       .from(users)
       .where(eq(users.clerkId, auth.userId)),
   );
+
+  if (res.error) {
+    throw new AppError(500, "Failed to fetch user");
+  }
+
+  if (!res.data?.[0]) {
+    throw new AppError(404, "User not found. Please sign in again.");
+  }
 
   return res.data[0].userId;
 }

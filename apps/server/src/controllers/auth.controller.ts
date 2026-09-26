@@ -1,36 +1,56 @@
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { getUserId } from "@/utils/general/getUser";
+import { AppError } from "@/utils/handlers/responseHandler";
 import { tryCatch } from "@/utils/handlers/tryCatch";
 import { eq } from "drizzle-orm";
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 
-export async function insertUser(req: Request, res: Response) {
+export async function insertUser(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   const { clerkId, userName, email, status } = req.body;
 
-  await getUserId(req);
+  if (!clerkId) {
+    return next(new AppError(400, "clerkId is missing"));
+  }
+
+  if (!email) {
+    return next(new AppError(400, "Email is required"));
+  }
 
   // checking if user already exists
-  const existingUser = await tryCatch(
+  const { data: existingUsers, error: lookupErr } = await tryCatch(
     db.select().from(users).where(eq(users.clerkId, clerkId)),
   );
 
-  console.log("existing user", existingUser);
+  if (lookupErr) {
+    return next(new AppError(500, "Failed to check existing user"));
+  }
 
-  if (Array.isArray(existingUser) && existingUser.length == 0) {
-    const insertResult = await tryCatch(
-      db.insert(users).values({
-        clerkId,
-        userName,
-        status,
-        email,
-      }),
-    );
-    void insertResult;
-  } else {
+  if (existingUsers.length > 0) {
     return res.status(200).json({
       success: true,
       message: "User already exists",
     });
   }
+
+  const { error: insertErr } = await tryCatch(
+    db.insert(users).values({
+      clerkId,
+      userName,
+      status,
+      email,
+    }),
+  );
+
+  if (insertErr) {
+    return next(new AppError(500, "Failed to create user"));
+  }
+
+  return res.status(201).json({
+    success: true,
+    message: "User created",
+  });
 }

@@ -2,81 +2,96 @@ import { db } from "@/db";
 import { endpoint, logs } from "@/db/schema";
 import { encryptData, generateSigningKey } from "@/utils/general/crypto";
 import { getUserId } from "@/utils/general/getUser";
+import { AppError } from "@/utils/handlers/responseHandler";
 import { tryCatch } from "@/utils/handlers/tryCatch";
+import { createEndpointSchema } from "@/utils/validation/schemas";
 import { eq } from "drizzle-orm";
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 
-export async function createUserEndpoint(req: Request, res: Response) {
+export async function createUserEndpoint(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   // one endpoint can have multiple event types, so event type will be an array (must validate)
-  const { endpoint: endpointUrl, eventTypes } = req.body;
+  const parsed = createEndpointSchema.safeParse(req.body);
 
-  if (!Array.isArray(eventTypes)) {
-    return res
-      .status(422)
-      .json({ message: "Saying EventTypes is not an array" });
+  if (!parsed.success) {
+    return next(
+      new AppError(
+        422,
+        "Invalid endpoint payload",
+        parsed.error.issues.map((issue) => issue.message),
+      ),
+    );
   }
 
-  // const userId = await getUserId(req);
-  const signingKey = generateSigningKey();
-  const encryptedSigningKey = encryptData(signingKey);
+  const { endpoint: endpointUrl, eventTypes } = parsed.data;
 
-  const { data: endpointRes, error } = await tryCatch(
-    db
-      .insert(endpoint)
-      .values({
-        url: endpointUrl,
-        eventTypes,
-        encryptedSigningKey,
-        userId: "a9d27f18-5ad8-4192-af13-ebb6c8e48c95",
-      })
-      .returning(),
-  );
+  try {
+    const userId = await getUserId(req);
+    const signingKey = generateSigningKey();
+    const encryptedSigningKey = encryptData(signingKey);
 
-  if (endpointRes) {
+    const { data: endpointRes, error } = await tryCatch(
+      db
+        .insert(endpoint)
+        .values({
+          url: endpointUrl,
+          eventTypes,
+          encryptedSigningKey,
+          userId,
+        })
+        .returning(),
+    );
+
+    if (error || !endpointRes?.[0]) {
+      return next(new AppError(500, "Error occurred while creating endpoint"));
+    }
+
     return res.status(201).json({
       message: "Endpoint created successfully",
       id: endpointRes[0].id,
     });
-  }
-
-  if (error) {
-    return res.status(500).json({
-      message: "Error occurred while creating endpoint",
-      error,
-    });
+  } catch (err) {
+    return next(err);
   }
 }
 
 // to fetch all the webhooks of the user along with their status
-export async function fetchUserWebhooks(req: Request, res: Response) {
-  if (!req.headers.authorization) return res.status(401);
+export async function fetchUserWebhooks(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const userId = await getUserId(req);
 
-  const userId = await getUserId(req);
+    // db call to fetch the logs
+    const { data: logsResult, error: fetchErr } = await tryCatch(
+      db
+        .select({
+          id: logs.id,
+          endpointUrl: endpoint.url,
+          statusCode: logs.statusCode,
+          attemptNumber: logs.attemptNumber,
+          endpointResponse: logs.endpointResponse,
+          failureCategory: logs.failureCategory,
+          failureReason: logs.failureReason,
+          startedAt: logs.startedAt,
+          finishedAt: logs.finishedAt,
+        })
+        .from(logs)
+        .innerJoin(endpoint, eq(logs.endpointId, endpoint.id))
+        .where(eq(logs.userId, userId)),
+    );
 
-  // db call to fetch the logs
-  const { data: logsResult, error: fetchErr } = await tryCatch(
-    db
-      .select({
-        id: logs.id,
-        endpointUrl: endpoint.url,
-        statusCode: logs.statusCode,
-        attemptNumber: logs.attemptNumber,
-        endpointResponse: logs.endpointResponse,
-        failureCategory: logs.failureCategory,
-        failureReason: logs.failureReason,
-        startedAt: logs.startedAt,
-        finishedAt: logs.finishedAt,
-      })
-      .from(logs)
-      .innerJoin(endpoint, eq(logs.endpointId, endpoint.id))
-      .where(eq(logs.userId, userId)),
-  );
+    if (fetchErr) {
+      return next(new AppError(400, "Failed to fetch the logs"));
+    }
 
-  if (fetchErr) {
-    return res
-      .status(400)
-      .json({ message: `Failed to fetch the logs ${fetchErr}` });
+    return res.status(200).json({ logs: logsResult });
+  } catch (err) {
+    return next(err);
   }
-
-  return res.status(200).json({ logs: logsResult });
 }

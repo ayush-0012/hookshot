@@ -3,12 +3,15 @@ import { apiKeys } from "@/db/schema";
 import { generateApiKey, generateHash } from "@/utils/general/crypto";
 import { getUserId } from "@/utils/general/getUser";
 import { desc, eq } from "drizzle-orm";
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 
-export async function createApiKey(req: Request, res: Response) {
+export async function createApiKey(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   const { keyName } = req.body;
 
-  console.log("token in headers", req.headers.authorization);
   // Generating api key and hashing it
   const generatedKey = generateApiKey();
   const hashedKey = generateHash(generatedKey);
@@ -36,11 +39,15 @@ export async function createApiKey(req: Request, res: Response) {
       .status(201)
       .json({ success: true, apiKey: generatedKey, data: apiKey });
   } catch (error) {
-    return res.status(500).json({ success: false, error });
+    return next(error);
   }
 }
 
-export async function getApiKeys(req: Request, res: Response) {
+export async function getApiKeys(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const userId = await getUserId(req);
 
@@ -57,6 +64,6 @@ export async function getApiKeys(req: Request, res: Response) {
 
     return res.status(200).json({ success: true, data: keys });
   } catch (error) {
-    return res.status(500).json({ success: false, error });
+    return next(error);
   }
 }

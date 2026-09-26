@@ -1,10 +1,11 @@
 import { db } from "@/db";
 import { endpoint, payload } from "@/db/schema";
 import { queue, retryQueue } from "@/utils/constants";
+import { getUserId } from "@/utils/general/getUser";
 import { tryCatch } from "@/utils/handlers/tryCatch";
 import { redisClient } from "@/utils/redis";
 import { Queue } from "bullmq";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Request, Response } from "express";
 import { uuid } from "../utils/general/uuid";
 
@@ -123,6 +124,9 @@ export async function retryJob(req: Request, res: Response) {
     return res.status(400).json({ message: "Payload ID is missing" });
   }
 
+  // Only the endpoint owner can retry its deliveries
+  const userId = await getUserId(req);
+
   // Parallely making db calls to get the url and payloadBody
   const [
     { data: endpointRes, error: endpointErr },
@@ -133,10 +137,11 @@ export async function retryJob(req: Request, res: Response) {
         .select({
           url: endpoint.url,
           eventTypes: endpoint.eventTypes,
-          userId: endpoint.userId,
         })
         .from(endpoint)
-        .where(eq(endpoint.id, endpointId)),
+        .where(
+          and(eq(endpoint.id, endpointId), eq(endpoint.userId, userId)),
+        ),
     ),
     tryCatch(
       db
@@ -157,11 +162,6 @@ export async function retryJob(req: Request, res: Response) {
   const endpointUrl = endpointRes[0]?.url;
   const eventTypes = endpointRes[0]?.eventTypes;
   const payloadBody = payloadRes[0]?.payloadBody;
-  const userId = endpointRes[0]?.userId;
-
-  if (!userId) {
-    return res.status(404).json({ message: "User not found for endpoint" });
-  }
 
   console.log("url and payload", endpointUrl, eventTypes, payloadBody);
 

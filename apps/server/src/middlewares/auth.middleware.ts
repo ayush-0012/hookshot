@@ -19,8 +19,6 @@ export async function validateApiKey(
   const { apiKey, endpointId } = req.body;
   const errors: string[] = [];
 
-  console.log("apikey and endpointid", { apiKey, endpointId });
-
   if (!apiKey) {
     errors.push("API key is missing");
   }
