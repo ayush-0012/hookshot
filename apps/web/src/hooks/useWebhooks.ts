@@ -7,6 +7,8 @@ import { api } from "@/utils/api";
 
 export type WebhookLog = {
   id: string;
+  endpointId: string | null;
+  payloadId: string | null;
   endpointUrl: string | null;
   statusCode: number | null;
   attemptNumber: number | null;
