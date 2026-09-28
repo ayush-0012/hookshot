@@ -72,6 +72,8 @@ export async function fetchUserWebhooks(
       db
         .select({
           id: logs.id,
+          endpointId: logs.endpointId,
+          payloadId: logs.payloadId,
           endpointUrl: endpoint.url,
           statusCode: logs.statusCode,
           attemptNumber: logs.attemptNumber,

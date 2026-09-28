@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { endpoint, payload } from "@/db/schema";
+import { endpoint, logs, payload } from "@/db/schema";
 import { queue, retryQueue } from "@/utils/constants";
 import { getUserId } from "@/utils/general/getUser";
 import { tryCatch } from "@/utils/handlers/tryCatch";
@@ -129,13 +129,26 @@ export async function retryJob(req: Request, res: Response) {
 
   // Parallely making db calls to get the url and payloadBody
   const [
+    { data: logRes, error: logErr },
     { data: endpointRes, error: endpointErr },
     { data: payloadRes, error: payloadErr },
   ] = await Promise.all([
     tryCatch(
       db
+        .select({ id: logs.id })
+        .from(logs)
+        .where(
+          and(
+            eq(logs.id, logId),
+            eq(logs.userId, userId),
+            eq(logs.endpointId, endpointId),
+            eq(logs.payloadId, payloadId),
+          ),
+        ),
+    ),
+    tryCatch(
+      db
         .select({
-          url: endpoint.url,
           eventTypes: endpoint.eventTypes,
         })
         .from(endpoint)
@@ -147,9 +160,13 @@ export async function retryJob(req: Request, res: Response) {
       db
         .select({ payloadBody: payload.payloadBody })
         .from(payload)
-        .where(eq(payload.id, payloadId)),
+        .where(and(eq(payload.id, payloadId), eq(payload.userId, userId))),
     ),
   ]);
+
+  if (logErr || !logRes?.length) {
+    return res.status(404).json({ message: "Delivery log not found" });
+  }
 
   if (endpointErr || !endpointRes?.length) {
     return res.status(404).json({ message: "Endpoint not found" });
@@ -159,11 +176,8 @@ export async function retryJob(req: Request, res: Response) {
     return res.status(404).json({ message: "Payload not found" });
   }
 
-  const endpointUrl = endpointRes[0]?.url;
   const eventTypes = endpointRes[0]?.eventTypes;
   const payloadBody = payloadRes[0]?.payloadBody;
-
-  console.log("url and payload", endpointUrl, eventTypes, payloadBody);
 
   // After getting data, add the job into the retry queue with the data
   const job = await retryPayloadQueue.add(
